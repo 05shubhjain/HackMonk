@@ -1,0 +1,2150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>CarbonVault - Full Prototype (Admin / NGO / Buyer / Public)</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
+
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+
+  <!-- Tailwind CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Font Awesome -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"/>
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <script>
+    /* Tailwind custom theme extension */
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            teal: {
+              50: '#f0fdfa',100: '#ccfbf1',200: '#99f6e4',300: '#5eead4',
+              400: '#2dd4bf',500: '#14b8a6',600: '#0d9488',700: '#0f766e',
+              800: '#115e59',900: '#134e4a'
+            },
+            amber: {
+              50:'#fffbeb',100:'#fef3c7',200:'#fde68a',300:'#fcd34d',400:'#fbbf24',
+              500:'#f59e0b',600:'#d97706',700:'#b45309',800:'#92400e',900:'#78350f'
+            }
+          },
+          animation: {
+            'pulse-slow': 'pulse 3s cubic-bezier(0.4,0,0.6,1) infinite',
+            'glow': 'glow 2s ease-in-out infinite alternate'
+          },
+          keyframes: {
+            glow: {
+              from: { boxShadow: '0 0 4px rgba(13,148,136,0.6)' },
+              to: { boxShadow: '0 0 18px rgba(13,148,136,0.9)' }
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    /* MAP / MOCK IMAGES as inline SVG backgrounds */
+    .map-container {
+        width: 100%;
+        height: auto;
+        object-fit: cover;
+        border-radius: 0.5rem;
+        border: 1px solid #e2e8f0;
+      }
+    .evidence-img {
+      background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="300" height="160"><rect width="100%" height="100%" fill="%23c6f6d5"/><circle cx="75" cy="80" r="40" fill="%2338a169"/><rect x="140" y="40" width="120" height="80" rx="10" fill="%230d9488" /></svg>');
+      background-size: cover;
+    }
+    .drone-img {
+      background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="300" height="160"><rect width="100%" height="100%" fill="%23e6fffa"/><circle cx="150" cy="80" r="30" fill="%230d9488"/><rect x="40" y="20" width="220" height="20" rx="10" fill="%230d9488"/></svg>');
+      background-size: cover;
+    }
+
+    /* Card hover / effects */
+    .card-hover { transition: all .28s cubic-bezier(.2,.8,.2,1); }
+    .card-hover:hover { transform: translateY(-6px) scale(1.01); box-shadow: 0 16px 40px rgba(4,16,22,0.08); }
+    .project-card { transition: all .25s ease-in-out; }
+    .project-card:hover { transform: scale(1.02); box-shadow: 0 10px 24px rgba(13,148,136,0.12); border-left: 4px solid #0d9488; }
+
+    /* marketplace flip */
+    .marketplace-card { perspective: 1000px; }
+    .marketplace-card-inner { transition: transform .6s; transform-style: preserve-3d; position: relative; height: 100%; }
+    .marketplace-card:hover .marketplace-card-inner { transform: rotateY(180deg); }
+    .marketplace-card-front, .marketplace-card-back {
+      backface-visibility: hidden; -webkit-backface-visibility: hidden;
+      position: absolute; width: 100%; height: 100%; border-radius: .5rem; padding: 1rem;
+    }
+    .marketplace-card-back { transform: rotateY(180deg); background: #f0fdfa; }
+
+    /* sidebar fixed behavior */
+    #sidebar { transition: transform .22s ease; }
+    .sidebar-link.active { background: rgba(255,255,255,0.06); }
+
+    /* small helpers */
+    .badge-glow { animation: glow 2s infinite alternate; }
+    .hidden-section { display: none; } /* used for sections controlled via JS */
+  </style>
+</head>
+<body class="bg-gray-50 min-h-screen text-sm antialiased">
+
+<!-- ================= LOGIN PAGE ================= -->
+
+<div id="login-screen" class="fixed inset-0 flex items-center justify-center z-50 bg-gradient-to-br from-teal-800 to-teal-900">
+
+  <canvas id="particles" class="absolute inset-0 pointer-events-none"></canvas>
+
+  <div class="bg-white/95 backdrop-blur-md rounded-xl shadow-2xl p-10 w-96 text-center relative z-10">
+
+    <div class="text-3xl font-bold text-teal-700 mb-2">
+      CarbonVault
+    </div>
+
+    <p class="text-gray-500 text-sm mb-6">
+      AI Powered Carbon Credit Platform
+    </p>
+
+    <div class="space-y-4">
+
+      <input
+      id="login-email"
+      type="email"
+      placeholder="Email"
+      class="w-full border p-3 rounded"/>
+
+<input
+id="login-password"
+type="password"
+autocomplete="off"
+placeholder="Password"
+class="w-full border p-3 rounded focus:outline-none"/>
+
+      <button
+onclick="loginUser()"
+class="w-full bg-teal-600 hover:bg-teal-700 text-white py-3 rounded font-semibold">
+Login
+</button>
+
+    </div>
+
+    <div class="text-xs text-gray-400 mt-5">
+
+      Demo Accounts:
+
+      <div>Admin → admin@carbonvault.com</div>
+      <div>NGO → ngo@carbonvault.com</div>
+      <div>Corporate → buyer@carbonvault.com</div>
+
+      <div>Password: 1234</div>
+
+    </div>
+
+  </div>
+
+</div>
+
+  <!-- NAVBAR -->
+<nav class="bg-teal-800 text-white shadow fixed top-0 left-0 w-full z-50">
+    <div class="container mx-auto px-4">
+      <div class="flex items-center justify-between py-3">
+        <div class="flex items-center gap-3">
+          <i class="fas fa-seedling text-2xl text-amber-300"></i>
+          <div>
+            <div class="text-lg font-bold">CarbonVault</div>
+            <div class="text-xs text-teal-100">Blue Carbon Credit Platform Prototype</div>
+          </div>
+        </div>
+
+        <!-- compact top nav: since sidebar exists, keep minimal -->
+        <div class="hidden md:flex items-center gap-4">
+          <!-- role label mirrors sidebar -->
+          <div id="nav-role-label" class="px-3 py-1 rounded bg-teal-700 text-xs flex items-center gap-2">
+            <i class="fas fa-user-circle"></i>
+            <span id="nav-role-text">Platform Admin</span>
+          </div>
+
+          <button id="switch-role-btn" class="bg-teal-700 hover:bg-teal-600 px-3 py-2 rounded text-xs flex items-center gap-2">
+            <i class="fas fa-exchange-alt"></i> Switch Role
+          </button>
+
+          <div class="flex items-center gap-3">
+            <button title="Notifications" class="p-2 rounded hover:bg-teal-700"><i class="fas fa-bell"></i></button>
+            <button title="Settings" class="p-2 rounded hover:bg-teal-700"><i class="fas fa-cog"></i></button>
+           <button id="profile-btn" class="w-8 h-8 rounded-full bg-teal-600 flex items-center justify-center hover:bg-teal-700">
+<i class="fas fa-user"></i>
+</button>
+          </div>
+        </div>
+
+        <!-- mobile menu icon -->
+        <div class="md:hidden">
+          <button id="mobile-toggle" class="p-2">
+            <i class="fas fa-bars"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <div style="height: 4rem;"></div>
+
+  <div class="flex">
+
+    <!-- SIDEBAR (fixed) -->
+<aside id="sidebar" class="fixed top-16 left-0 h-[calc(100vh-4rem)] w-64 bg-teal-700 text-white p-4 overflow-y-auto z-40">
+      <!-- user role header -->
+      <div class="flex items-center gap-3 mb-4">
+        <div class="w-12 h-12 rounded-full bg-teal-600 flex items-center justify-center text-white"><i class="fas fa-user-circle fa-lg"></i></div>
+        <div>
+          <div id="user-role" class="font-semibold">Platform Admin</div>
+          <div id="user-role-sub" class="text-xs text-teal-200">Administrator</div>
+        </div>
+      </div>
+
+      <!-- ADMIN NAV -->
+      <nav id="admin-nav" class="space-y-2">
+        <a class="block py-2 px-3 rounded sidebar-link" href="#admin-dashboard"> <i class="fas fa-home mr-2"></i> Dashboard</a>
+        <a class="block py-2 px-3 rounded sidebar-link" href="#admin-users"> <i class="fas fa-users-cog mr-2"></i> User Management</a>
+        <a class="block py-2 px-3 rounded sidebar-link" href="#admin-approvals"> <i class="fas fa-project-diagram mr-2"></i> Project Approvals</a>
+        <a class="block py-2 px-3 rounded sidebar-link" href="#admin-mrv"> <i class="fas fa-camera mr-2"></i> MRV Verification</a>
+        <a class="block py-2 px-3 rounded sidebar-link" href="#admin-fraud"> <i class="fas fa-shield-alt mr-2"></i> Fraud Detection</a>
+        <a class="block py-2 px-3 rounded sidebar-link" href="#admin-minting"> <i class="fas fa-coins mr-2"></i> Credit Minting</a>
+        <a class="block py-2 px-3 rounded sidebar-link" href="#admin-pricing"> <i class="fas fa-chart-area mr-2"></i> Pricing Engine</a>
+        <a class="block py-2 px-3 rounded sidebar-link" href="#admin-analytics"> <i class="fas fa-chart-line mr-2"></i> Analytics</a>
+      </nav>
+
+      <!-- NGO NAV -->
+      <nav id="ngo-nav" class="space-y-2 hidden">
+        <a class="block py-2 px-3 rounded sidebar-link" href="#ngo-dashboard"><i class="fas fa-home mr-2"></i> Dashboard</a>
+        <a class="block py-2 px-3 rounded sidebar-link" href="#ngo-projects"><i class="fas fa-project-diagram mr-2"></i> My Projects</a>
+        <a class="block py-2 px-3 rounded sidebar-link" href="#ngo-plots"><i class="fas fa-map-marked-alt mr-2"></i> Plots & Maps</a>
+        <a class="block py-2 px-3 rounded sidebar-link" href="#ngo-evidence"><i class="fas fa-camera mr-2"></i> Field Evidence</a>
+        <a class="block py-2 px-3 rounded sidebar-link" href="#ngo-shadow"><i class="fas fa-file-invoice-dollar mr-2"></i> Shadow Credits</a>
+        <a class="block py-2 px-3 rounded sidebar-link" href="#ngo-suitability"><i class="fas fa-search-location mr-2"></i> Site Suitability</a>
+        <a class="block py-2 px-3 rounded sidebar-link" href="#ngo-marketplace"><i class="fas fa-shopping-cart mr-2"></i> Marketplace</a>
+        <a class="block py-2 px-3 rounded sidebar-link" href="#ngo-analytics"><i class="fas fa-chart-pie mr-2"></i> Analytics</a>
+      </nav>
+
+      <!-- BUYER NAV -->
+      <nav id="buyer-nav" class="space-y-2 hidden">
+        <a class="block py-2 px-3 rounded sidebar-link" href="#buyer-dashboard"><i class="fas fa-home mr-2"></i> Dashboard</a>
+        <a class="block py-2 px-3 rounded sidebar-link" href="#buyer-marketplace"><i class="fas fa-shopping-cart mr-2"></i> Marketplace</a>
+        <a class="block py-2 px-3 rounded sidebar-link" href="#buyer-wallet"><i class="fas fa-wallet mr-2"></i> My Wallet</a>
+        <a class="block py-2 px-3 rounded sidebar-link" href="#buyer-reports"><i class="fas fa-file-export mr-2"></i> ESG Reports</a>
+        <a class="block py-2 px-3 rounded sidebar-link" href="#buyer-grs"><i class="fas fa-medal mr-2"></i> Green Reputation</a>
+      </nav>
+
+      <!-- PUBLIC NAV -->
+      <nav id="public-nav" class="space-y-2 hidden">
+        <a class="block py-2 px-3 rounded sidebar-link" href="#public-dashboard"><i class="fas fa-home mr-2"></i> Dashboard</a>
+        <a class="block py-2 px-3 rounded sidebar-link" href="#public-leaderboard"><i class="fas fa-trophy mr-2"></i> Leaderboard</a>
+        <a class="block py-2 px-3 rounded sidebar-link" href="#public-audits"><i class="fas fa-file-contract mr-2"></i> Audit Trails</a>
+        <a class="block py-2 px-3 rounded sidebar-link" href="#public-certificates"><i class="fas fa-certificate mr-2"></i> Certificates</a>
+        <a class="block py-2 px-3 rounded sidebar-link" href="#public-resilience"><i class="fas fa-water mr-2"></i> Climate Resilience</a>
+      </nav>
+
+      <div class="mt-auto pt-6">
+        <div class="bg-teal-600 p-3 rounded">
+          <div class="text-xs">Need help?</div>
+          <button class="mt-2 w-full bg-amber-400 text-teal-900 py-2 rounded text-sm">Contact Support</button>
+        </div>
+      </div>
+    </aside>
+
+    <!-- MAIN CONTENT (shifted right because sidebar is fixed) -->
+<main id="main" class="ml-64 mt-16 w-full p-6 min-h-screen">
+
+      <!-- ============================================================
+           ADMIN: Dashboard (Full page with KPIs, queues, MRV widgets)
+           ============================================================ -->
+      <section id="admin-dashboard" class="mb-8">
+        <div class="bg-white rounded shadow p-6 mb-6">
+          <div class="flex justify-between items-start">
+            <div>
+              <h2 class="text-2xl font-semibold text-teal-800">Platform Admin</h2>
+              <p class="text-gray-600 mt-1">Overview: approvals, MRV, fraud detection, pricing & analytics</p>
+            </div>
+            <div class="flex gap-2">
+              <button id="admin-refresh" class="bg-teal-600 px-3 py-2 rounded text-white text-sm"><i class="fas fa-sync-alt mr-2"></i> Refresh Data</button>
+              <a href="#admin-users" class="bg-white border border-teal-600 text-teal-700 px-3 py-2 rounded text-sm">Manage Users</a>
+            </div>
+          </div>
+        </div>
+
+        <!-- KPI Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+            <div class="bg-white rounded-lg shadow-md p-6 card-hover">
+                <div class="flex items-center">
+                    <div class="w-12 h-12 bg-teal-100 rounded-lg flex items-center justify-center mr-4">
+                        <i class="fas fa-coins text-teal-600 text-xl"></i>
+                    </div>
+                    <div>
+                        <div class="text-2xl font-bold text-teal-800">12,458</div>
+                        <div class="text-sm text-gray-600">Total Credits</div>
+                    </div>
+                </div>
+            </div>
+            <div class="bg-white rounded-lg shadow-md p-6 card-hover">
+                <div class="flex items-center">
+                    <div class="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center mr-4">
+                        <i class="fas fa-project-diagram text-blue-600 text-xl"></i>
+                    </div>
+                    <div>
+                        <div class="text-2xl font-bold text-blue-800">42</div>
+                        <div class="text-sm text-gray-600">Active Projects</div>
+                    </div>
+                </div>
+            </div>
+            <div class="bg-white rounded-lg shadow-md p-6 card-hover">
+                <div class="flex items-center">
+                    <div class="w-12 h-12 bg-amber-100 rounded-lg flex items-center justify-center mr-4">
+                        <i class="fas fa-clock text-amber-600 text-xl"></i>
+                    </div>
+                    <div>
+                        <div class="text-2xl font-bold text-amber-800">18</div>
+                        <div class="text-sm text-gray-600">Pending Reviews</div>
+                    </div>
+                </div>
+            </div>
+            <div class="bg-white rounded-lg shadow-md p-6 card-hover">
+                <div class="flex items-center">
+                    <div class="w-12 h-12 bg-red-100 rounded-lg flex items-center justify-center mr-4">
+                        <i class="fas fa-exclamation-triangle text-red-600 text-xl"></i>
+                    </div>
+                    <div>
+                        <div class="text-2xl font-bold text-red-800">7</div>
+                        <div class="text-sm text-gray-600">Flagged Risks</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Approval queue & MRV verification -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+          <!-- Project Approval Queue -->
+          <div class="bg-white p-6 rounded shadow">
+            <h3 class="font-semibold text-teal-800 mb-3">Project Approval Queue</h3>
+            <div class="space-y-4">
+              <!-- item -->
+              <div class="flex items-start justify-between p-3 bg-teal-50 rounded project-card">
+                <div>
+                  <div class="font-semibold">Mangrove Conservation Initiative</div>
+                  <div class="text-xs text-gray-600">Submitted: Ocean Guardians NGO • Coastal Region</div>
+                  <div class="text-xs mt-2 text-gray-600">Summary: Community-based mangrove restoration. 245 tCO₂e estimated.</div>
+                </div>
+                <div class="flex flex-col gap-2">
+                  <button class="bg-green-600 text-white px-3 py-1 rounded text-sm">Approve</button>
+                  <button class="bg-gray-200 px-3 py-1 rounded text-sm">Review</button>
+                </div>
+              </div>
+
+              <div class="flex items-start justify-between p-3 bg-teal-50 rounded project-card">
+                <div>
+                  <div class="font-semibold">Seagrass Restoration Project</div>
+                  <div class="text-xs text-gray-600">Submitted: Blue Ecosystem Foundation • Bay Area</div>
+                  <div class="text-xs mt-2 text-gray-600">Summary: Seagrass planting across 40 plots.</div>
+                </div>
+                <div class="flex flex-col gap-2">
+                  <button class="bg-green-600 text-white px-3 py-1 rounded text-sm">Approve</button>
+                  <button class="bg-gray-200 px-3 py-1 rounded text-sm">Review</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- MRV Verification Queue -->
+          <div class="bg-white p-6 rounded shadow">
+            <h3 class="font-semibold text-teal-800 mb-3">MRV Verification Queue</h3>
+            <div class="space-y-4">
+              <div class="flex items-center justify-between p-3 bg-amber-50 rounded project-card">
+                <div>
+                  <div class="font-semibold">Plot 12A - Mangrove</div>
+                  <div class="text-xs text-gray-600">AI Score: <span class="font-semibold">87%</span> • Needs Review</div>
+                  <div class="text-xs text-gray-600">Evidence: photo, GPS coordinates, field officer notes</div>
+                </div>
+                <div>
+                  <button class="bg-teal-600 text-white px-3 py-1 rounded text-sm">Open</button>
+                </div>
+              </div>
+
+              <div class="flex items-center justify-between p-3 bg-teal-50 rounded project-card">
+                <div>
+                  <div class="font-semibold">Plot 07B - Seagrass</div>
+                  <div class="text-xs text-gray-600">AI Score: <span class="font-semibold">92%</span> • Approved</div>
+                </div>
+                <div>
+                  <button class="bg-teal-600 text-white px-3 py-1 rounded text-sm">Mint Credits</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Fraud detection map + minting ledger -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+          <div class="bg-white p-6 rounded shadow">
+            <h3 class="font-semibold text-teal-800 mb-3">Fraud Detection Map</h3>
+            <img src=" https://imgs.search.brave.com/8Z0dHmkZQMTRh_k-dXP4zQN_a8B1ABNRJotdmr5dTCM/rs:fit:500:0:1:0/g:ce/aHR0cHM6Ly90NC5m/dGNkbi5uZXQvanBn/LzA3Lzc0LzI0Lzcz/LzM2MF9GXzc3NDI0/NzM1Ml9mS2RpZUJV/THU4YUlVU05YR3Jh/UGc4RVh3WmxUdGRE/US5qcGc" alt="Fraud Detection Map" class="map-container h-64 rounded-lg border" />
+            <div class="mt-4 text-sm text-amber-600 flex items-center gap-2">
+              <i class="fas fa-exclamation-triangle"></i> 2 potential overlapping plots detected • <a href="#admin-fraud" class="text-teal-700 underline">Investigate</a>
+            </div>
+            <!-- small legend -->
+            <div class="mt-3 text-xs text-gray-500">Legend: Overlap hotspots • Duplicates • GPS anomalies</div>
+          </div>
+
+          <div class="bg-white p-6 rounded shadow">
+            <h3 class="font-semibold text-teal-800 mb-3">Recent Credit Minting</h3>
+            <div class="overflow-x-auto">
+              <table class="min-w-full text-left">
+                <thead class="text-xs text-gray-500">
+                  <tr>
+                    <th class="py-2 px-3">Project</th><th class="py-2 px-3">Tons</th><th class="py-2 px-3">Date</th><th class="py-2 px-3">Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr class="border-t">
+                    <td class="py-2 px-3">Mangrove Conservation Initiative</td>
+                    <td class="py-2 px-3">245</td>
+                    <td class="py-2 px-3">Oct 12, 2023</td>
+                    <td class="py-2 px-3"><span class="text-green-700 bg-green-100 px-2 py-1 rounded text-xs">Minted</span></td>
+                  </tr>
+                  <tr class="border-t">
+                    <td class="py-2 px-3">Seagrass Restoration Project</td>
+                    <td class="py-2 px-3">180</td>
+                    <td class="py-2 px-3">Oct 10, 2023</td>
+                    <td class="py-2 px-3"><span class="text-green-700 bg-green-100 px-2 py-1 rounded text-xs">Minted</span></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="mt-4 text-xs text-gray-500">Ledger shows token mint transactions; integrated with blockchain-like audit trail.</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============================================================
+           ADMIN: Users / Approvals / MRV / Fraud / Minting / Pricing / Analytics Pages
+           (full pages follow — long content)
+           ============================================================ -->
+
+      <!-- ADMIN: User Management -->
+      <section id="admin-users" class="mb-8 hidden">
+        <div class="bg-white rounded shadow p-6 mb-4">
+          <div class="flex justify-between items-center">
+            <h2 class="text-xl font-semibold text-teal-800">User Management</h2>
+            <button class="bg-teal-600 text-white px-3 py-2 rounded text-sm"><i class="fas fa-user-plus mr-2"></i> Invite User</button>
+          </div>
+        </div>
+
+        <!-- search & filters -->
+        <div class="bg-white rounded shadow p-6 mb-6">
+          <div class="flex gap-3 items-center">
+            <input id="user-search" class="border px-3 py-2 rounded w-full" placeholder="Search organizations, users, emails..." />
+            <select id="user-role-filter" class="border px-3 py-2 rounded text-sm">
+              <option value="">All Roles</option>
+              <option>NGO</option><option>Buyer</option><option>Admin</option>
+            </select>
+            <button class="bg-teal-600 text-white px-3 py-2 rounded">Filter</button>
+          </div>
+        </div>
+
+        <!-- users table -->
+        <div class="bg-white rounded shadow p-6">
+          <table class="w-full">
+            <thead class="bg-teal-50 text-xs text-gray-600">
+              <tr>
+                <th class="p-3 text-left">Name</th>
+                <th class="p-3 text-left">Role</th>
+                <th class="p-3 text-left">Status</th>
+                <th class="p-3 text-left">Since</th>
+                <th class="p-3">Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr class="border-t">
+                <td class="p-3">Ocean Guardians NGO</td>
+                <td class="p-3">NGO</td>
+                <td class="p-3"><span class="text-green-700">Active</span></td>
+                <td class="p-3">Jan 2023</td>
+                <td class="p-3"><button class="text-teal-600">Edit</button></td>
+              </tr>
+              <tr class="border-t">
+                <td class="p-3">BlueCorp Ltd</td>
+                <td class="p-3">Buyer</td>
+                <td class="p-3"><span class="text-gray-600">Invited</span></td>
+                <td class="p-3">—</td>
+                <td class="p-3"><button class="text-teal-600">Resend Invite</button></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ADMIN: Project Approvals (full details) -->
+      <section id="admin-approvals" class="mb-8 hidden">
+        <div class="bg-white p-6 rounded shadow mb-4">
+          <h2 class="text-xl font-semibold text-teal-800">Project Approvals</h2>
+          <p class="text-gray-600">Detailed review, documentation and decision notes</p>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <!-- left: list -->
+          <div class="col-span-1 bg-white rounded shadow p-6">
+            <h3 class="font-semibold text-teal-800 mb-3">Pending Submissions</h3>
+            <ul class="space-y-3">
+              <li class="p-3 bg-teal-50 rounded flex justify-between items-center">
+                <div>
+                  <div class="font-semibold">Mangrove Conservation Initiative</div>
+                  <div class="text-xs text-gray-600">Ocean Guardians</div>
+                </div>
+                <div>
+                  <button class="bg-teal-600 text-white px-3 py-1 rounded">Open</button>
+                </div>
+              </li>
+              <li class="p-3 bg-teal-50 rounded flex justify-between items-center">
+                <div>
+                  <div class="font-semibold">Seagrass Restoration Project</div>
+                  <div class="text-xs text-gray-600">Blue Ecosystem</div>
+                </div>
+                <div>
+                  <button class="bg-teal-600 text-white px-3 py-1 rounded">Open</button>
+                </div>
+              </li>
+            </ul>
+          </div>
+
+          <!-- center: details -->
+          <div class="col-span-1 bg-white rounded shadow p-6">
+            <h3 class="font-semibold text-teal-800 mb-3">Submission Details</h3>
+            <div class="space-y-3 text-xs text-gray-600">
+              <div><strong>Project:</strong> Mangrove Conservation Initiative</div>
+              <div><strong>Submitted by:</strong> Ocean Guardians NGO</div>
+              <div><strong>Location:</strong> Coastal Region</div>
+              <div><strong>Summary:</strong> Community-led mangrove planting across 120 hectares to sequester carbon and improve fish habitat.</div>
+              <div><strong>Attachments:</strong></div>
+              <div class="mt-4">
+                <textarea class="w-full border p-2 rounded" placeholder="Review notes / decision rationale..."></textarea>
+              </div>
+              <div class="flex gap-2 mt-3">
+                <button class="bg-green-600 text-white px-3 py-2 rounded">Approve</button>
+                <button class="bg-gray-200 px-3 py-2 rounded">Request Changes</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- right: MRV snapshots -->
+          <div class="col-span-1 bg-white rounded shadow p-6">
+            <h3 class="font-semibold text-teal-800 mb-3">MRV Evidence</h3>
+            <div class="space-y-3">
+              <div class="bg-amber-50 p-3 rounded">
+                <div class="text-xs text-gray-600">Plot 12A • AI Score 87%</div>
+                <div class="mt-2 grid grid-cols-2 gap-2">
+                    <div class="h-24 rounded" style="background-image: url('https://images.unsplash.com/photo-1584820927498-cfe5211fd8bf?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80'); background-size: cover; background-position: center;"></div>
+                    <div class="h-24 rounded" style="background-image: url('https://images.unsplash.com/photo-1473968512647-3e447244af8f?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80'); background-size: cover; background-position: center;"></div>
+                  </div>
+              </div>
+              <div class="bg-teal-50 p-3 rounded">
+                <div class="text-xs text-gray-600">Plot 07B • AI Score 92% (Approved)</div>
+                <div class="mt-2 grid grid-cols-2 gap-2">
+                    <img src="https://images.unsplash.com/photo-1584820927498-cfe5211fd8bf?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80" alt="Evidence" class="h-24 w-full object-cover rounded">
+                    <img src="https://images.unsplash.com/photo-1473968512647-3e447244af8f?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80" alt="Drone" class="h-24 w-full object-cover rounded">
+                  </div>
+              </div>
+            </div>
+          </div> 
+        </div>
+      </section>
+
+      <!-- ADMIN: MRV verification page -->
+      <section id="admin-mrv" class="mb-8 hidden">
+        <div class="bg-white p-6 rounded shadow mb-4">
+          <h2 class="text-xl font-semibold text-teal-800">MRV Verification</h2>
+          <p class="text-gray-600">Run automated AI checks, manual verification and forward to auditor</p>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div class="bg-white p-4 rounded shadow">
+            <h4 class="font-semibold text-teal-800 mb-2">Filter Evidence</h4>
+            <div class="text-xs text-gray-600 mb-2">Filter by AI score, date, project, field officer.</div>
+            <input class="border p-2 rounded w-full mb-2" placeholder="Project name / plot id" />
+            <select class="border p-2 rounded w-full mb-2">
+              <option>AI Score &gt; 90</option><option>AI Score 80-90</option><option>Flagged</option>
+            </select>
+            <button class="bg-teal-600 text-white px-3 py-2 rounded w-full">Apply</button>
+          </div>
+
+          <div class="bg-white p-4 rounded shadow lg:col-span-2">
+            <h4 class="font-semibold text-teal-800 mb-2">Evidence Stream</h4>
+            <div class="space-y-4">
+              <div class="p-3 bg-teal-50 rounded flex items-center gap-4">
+                <div class="w-28 h-20 evidence-img rounded"></div>
+                <div>
+                  <div class="font-semibold">Plot 12A - Mangrove</div>
+                  <div class="text-xs text-gray-600">AI Score: 87% • Field Officer: Maria J • 2024-09-10</div>
+                  <div class="mt-2 text-xs">Notes: Some canopy loss; GPS within expected range.</div>
+                </div>
+                <div class="ml-auto text-right">
+                  <div class="text-xs text-gray-500">Flags</div>
+                  <div class="text-red-600 font-semibold">Overlap</div>
+                  <div class="mt-2">
+                    <button class="bg-teal-600 text-white px-3 py-1 rounded">Verify</button>
+                  </div>
+                </div>
+              </div>
+
+              <div class="p-3 bg-teal-50 rounded flex items-center gap-4">
+                <div class="w-28 h-20 drone-img rounded"></div>
+                <div>
+                  <div class="font-semibold">Plot 07B - Seagrass</div>
+                  <div class="text-xs text-gray-600">AI Score: 92% • Field Officer: John S • 2024-09-07</div>
+                </div>
+                <div class="ml-auto">
+                  <button class="bg-teal-600 text-white px-3 py-1 rounded">Verify</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ADMIN: Fraud Detection -->
+      <section id="admin-fraud" class="mb-8 hidden">
+        <div class="bg-white p-6 rounded shadow mb-4">
+          <h2 class="text-xl font-semibold text-teal-800">Fraud Detection</h2>
+          <p class="text-gray-600">Overlapping plots, duplicate evidence, GPS tampering detection</p>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div class="bg-white p-6 rounded shadow">
+            <h4 class="text-teal-800 font-semibold mb-3">Detected Issues</h4>
+            <ul class="space-y-3 text-xs text-gray-600">
+              <li class="p-2 bg-amber-50 rounded">Overlap: Plot 12A & 12B (high risk)</li>
+              <li class="p-2 bg-amber-50 rounded">Duplicate Evidence: Similar image hash across two NGOs</li>
+              <li class="p-2 bg-amber-50 rounded">GPS drift: 10m anomaly on Plot 07C</li>
+            </ul>
+            <div class="mt-4 text-xs text-gray-500">Actions: assign investigator, quarantine credits, request field re-verification.</div>
+          </div>
+
+          <div class="bg-white p-6 rounded shadow lg:col-span-2">
+            <h4 class="text-teal-800 font-semibold mb-3">Fraud Heatmap</h4>
+            <img src=" https://imgs.search.brave.com/-gGiZ2RX19D6Kka598U671bqAH1EHxg1Br0rWuNsv0s/rs:fit:500:0:1:0/g:ce/aHR0cHM6Ly93d3cu/c2xpZGV0ZWFtLm5l/dC9tZWRpYS9jYXRh/bG9nL3Byb2R1Y3Qv/Y2FjaGUvMzMweDE4/Ni9hL2MvYWN0aW9u/X3BsYW5fdG9fY29t/YmF0X2N5YmVyX2Ny/aW1lc19tYXBwaW5n/X29mX211bHRpcGxl/X2N5YmVyX2F0dGFj/a3NfdXNpbmdfcmlz/a19oZWF0X21hcF9z/bGlkZTAxLmpwZw" alt="Fraud Detection Map" class="map-container h-64 rounded-lg border" />
+            <div class="mt-4 flex gap-2">
+              <button class="bg-red-600 text-white px-3 py-2 rounded">Quarantine</button>
+              <button class="bg-amber-500 text-white px-3 py-2 rounded">Request Evidence</button>
+              <button class="bg-teal-600 text-white px-3 py-2 rounded">Assign Investigator</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ADMIN: Credit Minting -->
+      <section id="admin-minting" class="mb-8 hidden">
+        <div class="bg-white p-6 rounded shadow mb-4">
+          <h2 class="text-xl font-semibold text-teal-800">Credit Minting</h2>
+          <p class="text-gray-600">Issue/mint verified credits after auditor sign-off</p>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div class="bg-white p-6 rounded shadow">
+            <h4 class="font-semibold text-teal-800 mb-3">Ready to Mint</h4>
+            <div class="space-y-4">
+              <div class="p-3 bg-teal-50 rounded flex justify-between">
+                <div>
+                  <div class="font-semibold">Seagrass Restoration Project</div>
+                  <div class="text-xs text-gray-600">180 tCO₂e • Certificate pending</div>
+                </div>
+                <div>
+                  <button class="bg-teal-600 text-white px-3 py-1 rounded">Mint 180 t</button>
+                </div>
+              </div>
+
+              <div class="p-3 bg-teal-50 rounded flex justify-between">
+                <div>
+                  <div class="font-semibold">Mangrove Conservation Initiative</div>
+                  <div class="text-xs text-gray-600">245 tCO₂e • Auditor signed</div>
+                </div>
+                <div>
+                  <button class="bg-teal-600 text-white px-3 py-1 rounded">Mint 245 t</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="bg-white p-6 rounded shadow">
+            <h4 class="font-semibold text-teal-800 mb-3">Minting Ledger</h4>
+            <div class="overflow-auto" style="max-height:320px">
+              <table class="w-full text-xs">
+                <thead class="text-gray-500">
+                  <tr><th class="py-2">Txn ID</th><th class="py-2">Project</th><th class="py-2">Tons</th><th class="py-2">Date</th></tr>
+                </thead>
+                <tbody>
+                  <tr class="border-t"><td class="p-2">TXN-001</td><td class="p-2">Mangrove Conservation</td><td class="p-2">245</td><td class="p-2">2023-10-12</td></tr>
+                  <tr class="border-t"><td class="p-2">TXN-002</td><td class="p-2">Seagrass Restoration</td><td class="p-2">180</td><td class="p-2">2023-10-10</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="mt-3 text-xs text-gray-500">Ledger entries are append-only; minting attaches certificate IDs and audit proof.</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ADMIN: Dynamic Pricing Engine -->
+      <section id="admin-pricing" class="mb-8 hidden">
+        <div class="bg-white p-6 rounded shadow mb-4">
+          <h2 class="text-xl font-semibold text-teal-800">Dynamic Pricing Engine</h2>
+          <p class="text-gray-600">Price adjustments based on demand, supply, GRS and credit quality (living credit multipliers)</p>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div class="bg-white p-6 rounded shadow">
+            <h4 class="font-semibold text-teal-800 mb-3">Pricing Controls</h4>
+            <div class="text-xs text-gray-600">Set base price and multipliers</div>
+            <div class="mt-3 space-y-3">
+              <div>
+                <label class="text-xs text-gray-600">Base price ($/t)</label>
+                <input id="base-price" type="number" value="12" class="w-full border p-2 rounded mt-1" />
+              </div>
+              <div>
+                <label class="text-xs text-gray-600">Quality multiplier (0.5 - 2.0)</label>
+                <input id="quality-mul" type="range" min="0.5" max="2" step="0.1" value="1" class="w-full" />
+              </div>
+              <div>
+                <label class="text-xs text-gray-600">GRS multiplier (0.5 - 2.0)</label>
+                <input id="grs-mul" type="range" min="0.5" max="2" step="0.1" value="1" class="w-full" />
+              </div>
+              <button id="apply-pricing" class="bg-teal-600 text-white px-3 py-2 rounded w-full">Apply</button>
+            </div>
+          </div>
+
+          <div class="bg-white p-6 rounded shadow lg:col-span-2">
+            <h4 class="font-semibold text-teal-800 mb-3">Price History & Forecast</h4>
+            <canvas id="pricingChart" height="140"></canvas>
+            <div class="text-xs text-gray-500 mt-2">Chart: historical price (mock) and forecast based on dynamic factors.</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ADMIN: Analytics (charts) -->
+      <section id="admin-analytics" class="mb-8 hidden">
+        <div class="bg-white p-6 rounded shadow mb-4">
+          <h2 class="text-xl font-semibold text-teal-800">Analytics</h2>
+          <p class="text-gray-600">System-wide KPIs, MRV accuracy, pricing trends and resilience analytics</p>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div class="bg-white p-4 rounded shadow">
+            <h4 class="font-semibold text-teal-800 mb-3">Credits by Project Type</h4>
+            <canvas id="creditsByType" height="160"></canvas>
+          </div>
+
+          <div class="bg-white p-4 rounded shadow">
+            <h4 class="font-semibold text-teal-800 mb-3">MRV Accuracy</h4>
+            <canvas id="mrvAccuracy" height="160"></canvas>
+          </div>
+
+          <div class="bg-white p-4 rounded shadow">
+            <h4 class="font-semibold text-teal-800 mb-3">Resilience Impact Snapshot</h4>
+            <canvas id="resilienceRadar" height="160"></canvas>
+          </div>
+        </div>
+      </section>
+
+      <!-- ==================================================================
+           NGO ROLE: Dashboard, Projects, Plots, Evidence, Shadow Credits,
+           Suitability Engine, Marketplace, Analytics (full pages)
+           ================================================================== -->
+
+      <!-- NGO: Dashboard -->
+      <section id="ngo-dashboard" class="mb-8 hidden">
+        <div class="bg-white p-6 rounded shadow mb-4">
+          <div class="flex justify-between items-center">
+            <div>
+              <h2 class="text-2xl font-semibold text-teal-800">NGO Dashboard</h2>
+              <p class="text-gray-600">Manage projects, field teams and requests for verification</p>
+            </div>
+            <div>
+              <button class="bg-teal-600 text-white px-3 py-2 rounded"><i class="fas fa-plus mr-2"></i> New Project</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- KPI Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+            <div class="bg-white rounded-lg shadow-md p-6 card-hover">
+                <div class="flex items-center">
+                    <div class="w-12 h-12 bg-teal-100 rounded-lg flex items-center justify-center mr-4">
+                        <i class="fas fa-project-diagram text-teal-600 text-xl"></i>
+                    </div>
+                    <div>
+                        <div class="text-2xl font-bold text-teal-800">3</div>
+                        <div class="text-sm text-gray-600">Active Projects</div>
+                    </div>
+                </div>
+            </div>
+            <div class="bg-white rounded-lg shadow-md p-6 card-hover">
+                <div class="flex items-center">
+                    <div class="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center mr-4">
+                        <i class="fas fa-coins text-blue-600 text-xl"></i>
+                    </div>
+                    <div>
+                        <div class="text-2xl font-bold text-blue-800">425</div>
+                        <div class="text-sm text-gray-600">Total Credits</div>
+                    </div>
+                </div>
+            </div>
+            <div class="bg-white rounded-lg shadow-md p-6 card-hover">
+                <div class="flex items-center">
+                    <div class="w-12 h-12 bg-amber-100 rounded-lg flex items-center justify-center mr-4">
+                        <i class="fas fa-users text-amber-600 text-xl"></i>
+                    </div>
+                    <div>
+                        <div class="text-2xl font-bold text-amber-800">5</div>
+                        <div class="text-sm text-gray-600">Field Officers</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Projects list -->
+        <div class="bg-white p-6 rounded shadow mb-6">
+          <div class="flex justify-between items-center mb-3">
+            <h3 class="font-semibold text-teal-800">My Projects</h3>
+            <div class="text-xs text-gray-500">Map thumbnails, status badges and quick metrics</div>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="p-4 bg-teal-50 rounded project-card">
+              <div class="flex justify-between">
+                <div>
+                  <h4 class="font-semibold text-teal-800">Mangrove Conservation Initiative</h4>
+                  <div class="text-xs text-gray-600">Coastal Region • Started Jan 2023</div>
+                </div>
+                <div><span class="bg-green-100 text-green-700 px-2 py-1 rounded text-xs">Active</span></div>
+              </div>
+              <div class="mt-3 map-container h-36 rounded"></div>
+              <div class="mt-3 grid grid-cols-2 gap-2 text-xs">
+                <div><div class="text-gray-500">Survival Rate</div><div class="font-semibold">92%</div></div>
+                <div><div class="text-gray-500">Credits Generated</div><div class="font-semibold">245 t</div></div>
+              </div>
+              <div class="mt-3 flex gap-2">
+                <a href="#ngo-plots" class="text-teal-700 underline text-xs">View Plots</a>
+                <a href="#ngo-evidence" class="text-teal-700 underline text-xs">Evidence</a>
+              </div>
+            </div>
+
+            <div class="p-4 bg-teal-50 rounded project-card">
+              <div class="flex justify-between">
+                <div>
+                  <h4 class="font-semibold text-teal-800">Seagrass Restoration Project</h4>
+                  <div class="text-xs text-gray-600">Bay Area • Started Mar 2023</div>
+                </div>
+                <div><span class="bg-amber-100 text-amber-800 px-2 py-1 rounded text-xs">Verification</span></div>
+              </div>
+              <div class="mt-3 map-container h-36 rounded"></div>
+              <div class="mt-3 grid grid-cols-2 gap-2 text-xs">
+                <div><div class="text-gray-500">Survival Rate</div><div class="font-semibold">87%</div></div>
+                <div><div class="text-gray-500">Credits Estimated</div><div class="font-semibold">180 t</div></div>
+              </div>
+              <div class="mt-3 flex gap-2">
+                <a href="#ngo-plots" class="text-teal-700 underline text-xs">View Plots</a>
+                <a href="#ngo-evidence" class="text-teal-700 underline text-xs">Evidence</a>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Team & Marketplace -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div class="bg-white p-6 rounded shadow">
+            <h4 class="font-semibold text-teal-800 mb-3">Team Management</h4>
+            <div class="space-y-3">
+              <div class="flex items-center justify-between bg-teal-50 p-3 rounded">
+                <div class="flex items-center gap-3">
+                  <div class="w-10 h-10 rounded-full bg-teal-600 text-white flex items-center justify-center">MJ</div>
+                  <div><div class="font-semibold">Maria Johnson</div><div class="text-xs text-gray-500">Field Officer</div></div>
+                </div>
+                <div><button class="text-red-600">Remove</button></div>
+              </div>
+              <div class="flex items-center justify-between bg-teal-50 p-3 rounded">
+                <div class="flex items-center gap-3">
+                  <div class="w-10 h-10 rounded-full bg-teal-600 text-white flex items-center justify-center">JS</div>
+                  <div><div class="font-semibold">John Smith</div><div class="text-xs text-gray-500">Field Officer</div></div>
+                </div>
+                <div><button class="text-red-600">Remove</button></div>
+              </div>
+            </div>
+            <button class="mt-4 w-full bg-white border border-teal-600 text-teal-600 py-2 rounded">Invite Team Member</button>
+          </div>
+
+          <div class="bg-white p-6 rounded shadow">
+            <h4 class="font-semibold text-teal-800 mb-3">Marketplace Listings</h4>
+            <div class="space-y-3">
+              <div class="p-3 bg-teal-50 rounded flex justify-between items-center">
+                <div><div class="font-semibold">Mangrove Credits</div><div class="text-xs text-gray-500">245 tons available</div></div>
+                <div><span class="bg-green-100 text-green-800 px-2 py-1 rounded text-xs">Listed</span></div>
+              </div>
+              <div class="p-3 bg-amber-50 rounded flex justify-between items-center">
+                <div><div class="font-semibold">Seagrass Credits</div><div class="text-xs text-gray-500">180 tons pending</div></div>
+                <div><span class="bg-amber-100 text-amber-800 px-2 py-1 rounded text-xs">Draft</span></div>
+              </div>
+            </div>
+            <button class="mt-4 w-full bg-teal-600 text-white py-2 rounded">List New Credits</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- NGO: Projects (plots + management page) -->
+      <section id="ngo-projects" class="mb-8 hidden">
+        <div class="bg-white p-6 rounded shadow mb-4">
+          <div class="flex justify-between items-center">
+            <h2 class="text-xl font-semibold text-teal-800">My Projects</h2>
+            <button class="bg-teal-600 text-white px-3 py-2 rounded"><i class="fas fa-plus mr-2"></i> New Project</button>
+          </div>
+        </div>
+
+        <!-- single project detail page -->
+        <div class="bg-white p-6 rounded shadow mb-6">
+          <div class="flex flex-col lg:flex-row gap-6">
+            <div class="lg:w-2/3">
+              <h3 class="font-semibold text-teal-800">Mangrove Conservation Initiative</h3>
+              <div class="text-xs text-gray-600 mb-3">Coastal Region • Started Jan 2023 • NGO: Ocean Guardians</div>
+
+              <div class="map-container h-56 rounded-lg mb-3"></div>
+
+              <h4 class="font-semibold text-teal-800 mt-3">Plot List</h4>
+              <div class="mt-3 space-y-3">
+                <div class="p-3 bg-teal-50 rounded flex justify-between items-center">
+                  <div>
+                    <div class="font-semibold">Plot 12A</div>
+                    <div class="text-xs text-gray-600">Area: 2.4 ha • Last evidence: 2024-09-10</div>
+                  </div>
+                  <div class="flex gap-2">
+                    <a href="#ngo-evidence" class="text-teal-700 underline text-xs">Evidence</a>
+                    <button class="bg-teal-600 text-white px-3 py-1 rounded text-xs">Request Verification</button>
+                  </div>
+                </div>
+
+                <div class="p-3 bg-teal-50 rounded flex justify-between items-center">
+                  <div>
+                    <div class="font-semibold">Plot 07B</div>
+                    <div class="text-xs text-gray-600">Area: 1.8 ha • Last evidence: 2024-09-07</div>
+                  </div>
+                  <div class="flex gap-2">
+                    <a href="#ngo-evidence" class="text-teal-700 underline text-xs">Evidence</a>
+                    <button class="bg-teal-600 text-white px-3 py-1 rounded text-xs">Request Verification</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="lg:w-1/3">
+              <div class="bg-white p-4 rounded border">
+                <h4 class="font-semibold text-teal-800">Project Health</h4>
+                <div class="mt-2 text-xs text-gray-600">Survival Rate</div>
+                <div class="text-2xl font-bold">92%</div>
+                <div class="mt-3 text-xs text-gray-600">Safety Score</div>
+                <div class="text-xl font-semibold text-amber-600">84</div>
+
+                <div class="mt-4">
+                  <h4 class="font-semibold text-teal-800">Shadow Credits (Year 0-5)</h4>
+                  <div class="text-xs text-gray-600">Projected credits that are reserved and not yet tradable (risk-adjusted)</div>
+                  <div class="mt-2 grid grid-cols-2 gap-2">
+                    <div class="p-2 bg-gray-50 rounded text-center"><div class="font-semibold">Year 0</div><div class="text-xs">0</div></div>
+                    <div class="p-2 bg-gray-50 rounded text-center"><div class="font-semibold">Year 1</div><div class="text-xs">45</div></div>
+                    <div class="p-2 bg-gray-50 rounded text-center"><div class="font-semibold">Year 2</div><div class="text-xs">90</div></div>
+                    <div class="p-2 bg-gray-50 rounded text-center"><div class="font-semibold">Year 3</div><div class="text-xs">120</div></div>
+                  </div>
+                </div>
+
+                <div class="mt-4">
+                  <h4 class="font-semibold text-teal-800">List Credits</h4>
+                  <button class="mt-2 w-full bg-teal-600 text-white py-2 rounded">List on Marketplace</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- NGO: Plots & Maps page -->
+      <section id="ngo-plots" class="mb-8 hidden">
+        <div class="bg-white p-6 rounded shadow mb-4">
+          <h2 class="text-xl font-semibold text-teal-800">Plots & Maps</h2>
+          <p class="text-gray-600">Overview of plots, status, GPS and recommended actions</p>
+        </div>
+
+        <div class="bg-white p-6 rounded shadow mb-6">
+          <div id="project-map" style="height:400px;border-radius:10px;"></div>
+          <div class="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div class="p-3 bg-teal-50 rounded">
+              <div class="font-semibold">Plot 12A</div>
+              <div class="text-xs text-gray-600">Status: Needs Review</div>
+              <div class="mt-2"><button class="bg-teal-600 text-white px-3 py-1 rounded">Open Evidence</button></div>
+            </div>
+            <div class="p-3 bg-teal-50 rounded">
+              <div class="font-semibold">Plot 07B</div>
+              <div class="text-xs text-gray-600">Status: Approved</div>
+              <div class="mt-2"><button class="bg-teal-600 text-white px-3 py-1 rounded">View</button></div>
+            </div>
+            <div class="p-3 bg-teal-50 rounded">
+              <div class="font-semibold">Plot 05C</div>
+              <div class="text-xs text-gray-600">Status: Draft</div>
+              <div class="mt-2"><button class="bg-white border border-teal-600 text-teal-600 px-3 py-1 rounded">Edit</button></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- NGO: Evidence upload + MRV results -->
+      <section id="ngo-evidence" class="mb-8 hidden">
+        <div class="bg-white p-6 rounded shadow mb-4">
+          <h2 class="text-xl font-semibold text-teal-800">Field Evidence</h2>
+          <p class="text-gray-600">Upload photos, GPS traces, videos and field officer notes. MRV engine will auto-analyze.</p>
+        </div>
+
+        <div class="bg-white p-6 rounded shadow mb-6">
+          <form id="evidence-form" class="space-y-4">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label class="text-xs text-gray-600">Project</label>
+                <select class="border p-2 rounded w-full">
+                  <option>Mangrove Conservation Initiative</option>
+                  <option>Seagrass Restoration Project</option>
+                </select>
+              </div>
+              <div>
+                <label class="text-xs text-gray-600">Plot</label>
+                <select class="border p-2 rounded w-full">
+                  <option>Plot 12A</option>
+                  <option>Plot 07B</option>
+                </select>
+              </div>
+              <div>
+                <label class="text-xs text-gray-600">Field Officer</label>
+                <input class="border p-2 rounded w-full" placeholder="Officer name" />
+              </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label class="text-xs text-gray-600">Upload Photo / Evidence</label>
+                <input type="file" class="w-full" />
+              </div>
+              <div>
+                <label class="text-xs text-gray-600">Notes</label>
+                <textarea class="border p-2 rounded w-full" placeholder="Field notes..."></textarea>
+              </div>
+            </div>
+
+            <div class="flex gap-3">
+              <button type="button" id="submit-evidence" class="bg-teal-600 text-white px-4 py-2 rounded">Submit Evidence</button>
+              <button type="button" class="bg-gray-200 px-4 py-2 rounded">Save Draft</button>
+            </div>
+          </form>
+        </div>
+
+        <!-- MRV result preview -->
+        <div class="bg-white p-6 rounded shadow">
+          <h4 class="font-semibold text-teal-800 mb-3">MRV Results (Sample)</h4>
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div class="p-3 bg-teal-50 rounded">
+              <div class="text-xs text-gray-500">AI Score</div>
+              <div class="text-3xl font-bold">87%</div>
+              <div class="text-xs text-gray-500 mt-2">Confidence: 0.87</div>
+            </div>
+            <div class="p-3 bg-teal-50 rounded">
+              <div class="text-xs text-gray-500">Duplicate Check</div>
+              <div class="text-3xl font-bold text-green-700">No</div>
+              <div class="text-xs text-gray-500 mt-2">Image hashes unique</div>
+            </div>
+            <div class="p-3 bg-teal-50 rounded">
+              <div class="text-xs text-gray-500">GPS Drift</div>
+              <div class="text-3xl font-bold">2m</div>
+              <div class="text-xs text-gray-500 mt-2">Within expected range</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- NGO: Shadow Credits (detailed UI) -->
+      <section id="ngo-shadow" class="mb-8 hidden">
+        <div class="bg-white p-6 rounded shadow mb-4">
+          <h2 class="text-xl font-semibold text-teal-800">Shadow Credits</h2>
+          <p class="text-gray-600">Projected credits (0-5 years) reserved until verified or risk-adjusted. Visualize, manage and publish when eligible.</p>
+        </div>
+
+        <div class="bg-white p-6 rounded shadow mb-6">
+          <h4 class="font-semibold text-teal-800 mb-3">Projected Timeline</h4>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <canvas id="shadowCreditsChart" height="160"></canvas>
+            </div>
+            <div class="text-xs text-gray-600">
+              <p><strong>Policy:</strong> Shadow credits are reserved in the ledger but are not tradable until survival confirmations at Year 3.</p>
+              <p class="mt-3"><strong>Adjustments</strong>: Apply risk multipliers or re-evaluate using field evidence.</p>
+              <div class="mt-4">
+                <button class="bg-teal-600 text-white px-3 py-2 rounded">Publish Eligible Credits</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="bg-white p-6 rounded shadow">
+          <h4 class="font-semibold text-teal-800 mb-3">Year-by-Year Breakdown</h4>
+          <table class="w-full text-xs">
+            <thead class="text-gray-500"><tr><th class="p-2">Year</th><th class="p-2">Projected (t)</th><th class="p-2">Risk Adj (%)</th><th class="p-2">Tradable</th></tr></thead>
+            <tbody>
+              <tr class="border-t"><td class="p-2">Year 0</td><td class="p-2">0</td><td class="p-2">—</td><td class="p-2">No</td></tr>
+              <tr class="border-t"><td class="p-2">Year 1</td><td class="p-2">45</td><td class="p-2">70%</td><td class="p-2">No</td></tr>
+              <tr class="border-t"><td class="p-2">Year 2</td><td class="p-2">90</td><td class="p-2">85%</td><td class="p-2">No</td></tr>
+              <tr class="border-t"><td class="p-2">Year 3</td><td class="p-2">120</td><td class="p-2">95%</td><td class="p-2">Eligible Soon</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- NGO: Site Suitability Engine (mock) -->
+      <section id="ngo-suitability" class="mb-8 hidden">
+        <div class="bg-white p-6 rounded shadow mb-4">
+          <h2 class="text-xl font-semibold text-teal-800">Site Suitability Engine</h2>
+          <p class="text-gray-600">AI-suggested planting sites, hazard overlays and feasibility scores</p>
+        </div>
+
+        <div class="bg-white p-6 rounded shadow">
+          <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+            <div class="lg:col-span-2">
+              <div class="map-container h-72 rounded"></div>
+              <div class="mt-3 text-xs text-gray-500">Map shows suggested sites (green dots) and hazard zones (shaded).</div>
+            </div>
+            <div>
+              <h4 class="font-semibold text-teal-800">Recommended Sites</h4>
+              <ul class="space-y-3 mt-3 text-xs">
+                <li class="p-3 bg-teal-50 rounded">
+                  <div class="font-semibold">Site A - Mangrove Fringe</div>
+                  <div class="text-gray-600">Suitability: 92 • Estimated area: 3.2 ha</div>
+                  <div class="mt-2"><button class="bg-teal-600 text-white px-3 py-1 rounded">Create Project</button></div>
+                </li>
+                <li class="p-3 bg-teal-50 rounded">
+                  <div class="font-semibold">Site B - Estuary</div>
+                  <div class="text-gray-600">Suitability: 86 • Estimated area: 2.1 ha</div>
+                  <div class="mt-2"><button class="bg-teal-600 text-white px-3 py-1 rounded">Create Project</button></div>
+                </li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- NGO: Marketplace (NGO listing & management) -->
+      <section id="ngo-marketplace" class="mb-8 hidden">
+        <div class="bg-white p-6 rounded shadow mb-4">
+          <h2 class="text-xl font-semibold text-teal-800">Marketplace - My Listings</h2>
+          <p class="text-gray-600">Manage prices, lot sizes and listing status for your credits</p>
+        </div>
+
+        <div class="bg-white p-6 rounded shadow mb-6">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="p-4 bg-teal-50 rounded">
+              <div class="flex justify-between items-start">
+                <div>
+                  <div class="font-semibold">Mangrove Credits</div>
+                  <div class="text-xs text-gray-600">245 t available</div>
+                </div>
+                <div><span class="bg-green-100 text-green-800 px-2 py-1 rounded text-xs">Listed</span></div>
+              </div>
+              <div class="mt-3">
+                <div class="text-xs text-gray-600">Price ($/t)</div>
+                <div class="text-lg font-semibold">$12</div>
+                <div class="mt-2"><button class="bg-white border border-teal-600 text-teal-600 px-3 py-2 rounded">Edit Listing</button></div>
+              </div>
+            </div>
+
+            <div class="p-4 bg-amber-50 rounded">
+              <div class="flex justify-between items-start">
+                <div>
+                  <div class="font-semibold">Seagrass Credits</div>
+                  <div class="text-xs text-gray-600">180 t pending</div>
+                </div>
+                <div><span class="bg-amber-100 text-amber-800 px-2 py-1 rounded text-xs">Draft</span></div>
+              </div>
+              <div class="mt-3">
+                <div class="text-xs text-gray-600">Price ($/t)</div>
+                <div class="text-lg font-semibold">$15</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- create new listing -->
+        <div class="bg-white p-6 rounded shadow">
+          <h4 class="font-semibold text-teal-800 mb-3">Create New Listing</h4>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <input class="border p-2 rounded" placeholder="Listing title (e.g., Mangrove Credits Lot A)" />
+            <input class="border p-2 rounded" placeholder="Available tons" />
+            <input class="border p-2 rounded" placeholder="Price ($/t)" />
+            <select class="border p-2 rounded">
+              <option>Immediate</option><option>Draft</option>
+            </select>
+          </div>
+          <div class="mt-3">
+            <button class="bg-teal-600 text-white px-4 py-2 rounded">Publish Listing</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- NGO: Analytics -->
+      <section id="ngo-analytics" class="mb-8 hidden">
+        <div class="bg-white p-6 rounded shadow mb-4">
+          <h2 class="text-xl font-semibold text-teal-800">Project Analytics</h2>
+          <p class="text-gray-600">Survival rates, co-benefits, financials and GRS influences</p>
+        </div>
+
+        <div class="bg-white p-6 rounded shadow">
+          <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <div>
+              <h4 class="font-semibold text-teal-800 mb-2">Survival Rate Over Time</h4>
+              <canvas id="ngoSurvivalChart" height="160"></canvas>
+            </div>
+            <div>
+              <h4 class="font-semibold text-teal-800 mb-2">Co-benefits (Biodiversity, Fisheries)</h4>
+              <canvas id="ngoCobeneftChart" height="160"></canvas>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ==================================================================
+           BUYER ROLE: Dashboard, Marketplace, Wallet, ESG Reports, GRS
+           ================================================================== -->
+
+      <!-- BUYER: Dashboard -->
+      <section id="buyer-dashboard" class="mb-8 hidden">
+        <div class="bg-white p-6 rounded shadow mb-4">
+          <div class="flex justify-between items-center">
+            <div>
+              <h2 class="text-2xl font-semibold text-teal-800">Corporate Buyer Dashboard</h2>
+              <p class="text-gray-600">Browse verified projects and track purchased credits</p>
+            </div>
+            <div>
+              <button class="bg-teal-600 text-white px-3 py-2 rounded"><i class="fas fa-shopping-cart mr-2"></i> Marketplace</button>
+            </div>
+          </div>
+        </div>
+
+       <!-- KPI Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+      <div class="bg-white rounded-lg shadow-md p-6 card-hover">
+        <div class="flex items-center">
+          <div class="w-12 h-12 bg-teal-100 rounded-lg flex items-center justify-center mr-4">
+            <i class="fas fa-coins text-teal-600 text-xl"></i>
+          </div>
+          <div>
+            <div class="text-2xl font-bold text-teal-800">1,245</div>
+            <div class="text-sm text-gray-600">Credits Purchased</div>
+          </div>
+        </div>
+      </div>
+      <div class="bg-white rounded-lg shadow-md p-6 card-hover">
+        <div class="flex items-center">
+          <div class="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center mr-4">
+            <i class="fas fa-project-diagram text-blue-600 text-xl"></i>
+          </div>
+          <div>
+            <div class="text-2xl font-bold text-blue-800">8</div>
+            <div class="text-sm text-gray-600">Supported Projects</div>
+          </div>
+        </div>
+      </div>
+      <div class="bg-white rounded-lg shadow-md p-6 card-hover">
+        <div class="flex items-center">
+          <div class="w-12 h-12 bg-amber-100 rounded-lg flex items-center justify-center mr-4">
+            <i class="fas fa-certificate text-amber-600 text-xl"></i>
+          </div>
+          <div>
+            <div class="text-2xl font-bold text-amber-800">12</div>
+            <div class="text-sm text-gray-600">ESG Reports</div>
+          </div>
+        </div>
+      </div>
+    </div>
+      </section>
+
+      <!-- BUYER: Marketplace full with flip cards -->
+      <section id="buyer-marketplace" class="mb-8 hidden">
+        <div class="bg-white p-6 rounded shadow mb-4">
+          <h2 class="text-xl font-semibold text-teal-800">Marketplace</h2>
+          <p class="text-gray-600">Browse verified credits. Real price reflects dynamic pricing engine.</p>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <!-- Card 1 -->
+          <div class="marketplace-card bg-transparent">
+            <div class="marketplace-card-inner">
+              <div class="marketplace-card-front bg-white p-4 rounded shadow h-64 flex flex-col">
+                <div class="flex justify-between items-center">
+                  <div>
+                    <h4 class="font-semibold text-teal-800">Mangrove Conservation Initiative</h4>
+                    <div class="text-xs text-gray-500">245 t available • Verified</div>
+                  </div>
+                  <div class="text-right">
+                    <div class="text-xs text-gray-500">Price</div>
+                    <div class="font-bold text-teal-700">$12/t</div>
+                  </div>
+                </div>
+                <div class="mt-3 map-container rounded h-28"></div>
+                <div class="mt-3">
+                  <button class="bg-teal-600 w-full text-white py-2 rounded">View Details</button>
+                </div>
+              </div>
+
+              <div class="marketplace-card-back p-4 rounded h-64 flex flex-col justify-between">
+                <div>
+                  <h4 class="font-semibold text-teal-800">Project Details</h4>
+                  <div class="text-xs text-gray-600">Verified by: Auditor • Cert: MC-245</div>
+                  <div class="mt-3 evidence-img h-24 rounded"></div>
+                </div>
+                <div>
+                  <div class="flex gap-2">
+                    <button class="bg-amber-500 text-white px-3 py-2 rounded w-full">Buy 10 t</button>
+                    <button class="bg-white border border-teal-600 text-teal-600 px-3 py-2 rounded w-full">Add to Cart</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Card 2 -->
+          <div class="marketplace-card bg-transparent">
+            <div class="marketplace-card-inner">
+              <div class="marketplace-card-front bg-white p-4 rounded shadow h-64 flex flex-col">
+                <div class="flex justify-between items-center">
+                  <div>
+                    <h4 class="font-semibold text-teal-800">Seagrass Restoration Project</h4>
+                    <div class="text-xs text-gray-500">180 t • Verification pending</div>
+                  </div>
+                  <div class="text-right">
+                    <div class="text-xs text-gray-500">Price</div>
+                    <div class="font-bold text-teal-700">$15/t</div>
+                  </div>
+                </div>
+                <div class="mt-3 map-container rounded h-28"></div>
+                <div class="mt-3">
+                  <button class="bg-teal-600 w-full text-white py-2 rounded">View Details</button>
+                </div>
+              </div>
+
+              <div class="marketplace-card-back p-4 rounded h-64 flex flex-col justify-between">
+                <div>
+                  <h4 class="font-semibold text-teal-800">Project Details</h4>
+                  <div class="text-xs text-gray-600">Verification pending • Draft certificate</div>
+                  <div class="mt-3 drone-img h-24 rounded"></div>
+                </div>
+                <div><button class="bg-amber-500 text-white px-3 py-2 rounded w-full">Preorder</button></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Card 3: Living Credits sample -->
+          <div class="marketplace-card bg-transparent">
+            <div class="marketplace-card-inner">
+              <div class="marketplace-card-front bg-white p-4 rounded shadow h-64 flex flex-col">
+                <div class="flex justify-between items-center">
+                  <div>
+                    <h4 class="font-semibold text-teal-800">Living Carbon (High Resilience)</h4>
+                    <div class="text-xs text-gray-500">120 t • Living credit multiplier applied</div>
+                  </div>
+                  <div class="text-right">
+                    <div class="text-xs text-gray-500">Price</div>
+                    <div class="font-bold text-teal-700">$18/t</div>
+                  </div>
+                </div>
+                <div class="mt-3 map-container rounded h-28"></div>
+                <div class="mt-3">
+                  <button class="bg-teal-600 w-full text-white py-2 rounded">View Details</button>
+                </div>
+              </div>
+
+              <div class="marketplace-card-back p-4 rounded h-64 flex flex-col justify-between">
+                <div>
+                  <h4 class="font-semibold text-teal-800">Living Credits Info</h4>
+                  <div class="text-xs text-gray-600">Risk-adjusted value due to high survival & co-benefits</div>
+                </div>
+                <div><button class="bg-amber-500 text-white px-3 py-2 rounded w-full">Buy Credits</button></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- BUYER: Wallet -->
+      <section id="buyer-wallet" class="mb-8 hidden">
+        <div class="bg-white p-6 rounded shadow mb-4">
+          <h2 class="text-xl font-semibold text-teal-800">My Wallet</h2>
+          <p class="text-gray-600">Balance, transactions and certificate downloads</p>
+        </div>
+
+        <div class="bg-white p-6 rounded shadow mb-6">
+          <div class="flex justify-between items-center">
+            <div>
+              <div class="text-xs text-gray-500">Total Balance</div>
+              <div class="text-3xl font-bold text-teal-800">1,245 Credits</div>
+              <div class="text-xs text-gray-500 mt-1">Tradable: 1,100 • Shadow: 145</div>
+            </div>
+            <div>
+              <button class="bg-teal-600 text-white px-3 py-2 rounded">Download ESG Report</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="bg-white p-6 rounded shadow">
+          <h4 class="font-semibold text-teal-800 mb-3">Recent Transactions</h4>
+          <table class="w-full text-xs">
+            <thead class="text-gray-500"><tr><th class="p-2">Date</th><th class="p-2">Project</th><th class="p-2">Tons</th><th class="p-2">Price</th><th class="p-2">Cert</th></tr></thead>
+            <tbody>
+              <tr class="border-t"><td class="p-2">2023-11-01</td><td class="p-2">Mangrove Conservation</td><td class="p-2">100</td><td class="p-2">$12</td><td class="p-2"><a class="text-teal-600 underline" href="#">Download</a></td></tr>
+              <tr class="border-t"><td class="p-2">2023-10-22</td><td class="p-2">Living Carbon Resilience</td><td class="p-2">50</td><td class="p-2">$18</td><td class="p-2"><a class="text-teal-600 underline" href="#">Download</a></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- BUYER: ESG Reports -->
+      <section id="buyer-reports" class="mb-8 hidden">
+        <div class="bg-white p-6 rounded shadow mb-4">
+          <h2 class="text-xl font-semibold text-teal-800">ESG / SDG / UNFCCC Reports</h2>
+          <p class="text-gray-600">Generate exportable reports for purchased credits and corporate disclosures</p>
+        </div>
+
+        <div class="bg-white p-6 rounded shadow">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <h4 class="font-semibold text-teal-800">Report Builder</h4>
+              <div class="mt-2 text-xs text-gray-600">Select date range, projects and format (PDF/CSV)</div>
+              <div class="mt-3">
+                <select class="border p-2 rounded w-full mb-2"><option>Last 12 months</option><option>Custom</option></select>
+                <select class="border p-2 rounded w-full mb-2"><option>UNFCCC format</option><option>SDG alignment</option><option>ESG summary</option></select>
+                <div class="flex gap-2">
+                  <button class="bg-teal-600 text-white px-3 py-2 rounded">Download PDF</button>
+                  <button class="bg-white border border-teal-600 px-3 py-2 rounded">Download CSV</button>
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <h4 class="font-semibold text-teal-800">Report History</h4>
+              <ul class="mt-3 text-xs">
+                <li class="p-2 bg-gray-50 rounded flex justify-between"><span>ESG Summary - 2024-01-10</span><a class="text-teal-600 underline" href="#">Download</a></li>
+                <li class="p-2 bg-gray-50 rounded flex justify-between mt-2"><span>UNFCCC Export - 2023-12-05</span><a class="text-teal-600 underline" href="#">Download</a></li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- BUYER: Green Reputation Score (GRS) -->
+      <section id="buyer-grs" class="mb-8 hidden">
+        <div class="bg-white p-6 rounded shadow mb-4">
+          <h2 class="text-xl font-semibold text-teal-800">Green Reputation Score (GRS)</h2>
+          <p class="text-gray-600">Score and badges reflect corporate contribution to verified projects, transparency and long-term commitments</p>
+        </div>
+
+        <div class="bg-white p-6 rounded shadow">
+          <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+            <div class="p-4 bg-teal-50 rounded">
+              <div class="text-xs text-gray-600">Current GRS</div>
+              <div class="text-4xl font-bold text-teal-800">81</div>
+              <div class="text-xs text-gray-500 mt-2">Badge: <span class="bg-amber-400 text-white px-2 py-1 rounded">Gold</span></div>
+            </div>
+            <div class="p-4 bg-white rounded shadow col-span-2">
+              <h4 class="font-semibold text-teal-800 mb-2">GRS Breakdown</h4>
+              <div class="text-xs text-gray-600">Transparency, long-term purchases, project quality, verification completeness</div>
+              <div class="mt-3 grid grid-cols-1 md:grid-cols-2 gap-2 text-xs">
+                <div class="p-2 bg-gray-50 rounded"><div class="font-semibold">Transparency</div><div>90</div></div>
+                <div class="p-2 bg-gray-50 rounded"><div class="font-semibold">Quality</div><div>78</div></div>
+                <div class="p-2 bg-gray-50 rounded"><div class="font-semibold">Long-term Commitment</div><div>70</div></div>
+                <div class="p-2 bg-gray-50 rounded"><div class="font-semibold">Verification</div><div>86</div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ==================================================================
+           PUBLIC ROLE: Dashboard, Leaderboard, Audit Trails, Certificates, Resilience
+           ================================================================== -->
+
+      <!-- PUBLIC: Dashboard -->
+      <section id="public-dashboard" class="mb-8 hidden">
+        <div class="bg-white p-6 rounded shadow mb-4">
+          <h2 class="text-2xl font-semibold text-teal-800">Public Dashboard</h2>
+          <p class="text-gray-600">Transparency layer, audit logs and public reports</p>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+          <div class="bg-white p-5 rounded card-hover">
+            <div class="text-xs text-gray-500">Total Credits Issued</div>
+            <div class="text-2xl font-bold text-teal-800">12,458</div>
+          </div>
+          <div class="bg-white p-5 rounded card-hover">
+            <div class="text-xs text-gray-500">Verified Projects</div>
+            <div class="text-2xl font-bold text-teal-800">32</div>
+          </div>
+          <div class="bg-white p-5 rounded card-hover">
+            <div class="text-xs text-gray-500">Audits Conducted</div>
+            <div class="text-2xl font-bold text-teal-800">18</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- PUBLIC: Leaderboard -->
+      <section id="public-leaderboard" class="mb-8 hidden">
+        <div class="bg-white p-6 rounded shadow mb-4">
+          <h2 class="text-xl font-semibold text-teal-800">Leaderboard</h2>
+          <p class="text-gray-600">Top NGOs and Corporates by transparency and impact</p>
+        </div>
+
+        <div class="bg-white p-6 rounded shadow mb-6">
+          <ul class="space-y-3">
+            <li class="flex items-center justify-between p-3 bg-teal-50 rounded">
+              <div class="flex items-center gap-3">
+                <div class="px-3 py-1 bg-amber-400 text-white rounded">1</div>
+                <div><div class="font-semibold">Ocean Guardians NGO</div><div class="text-xs text-gray-600">Impact: 2450 pts</div></div>
+              </div>
+              <div class="text-teal-700 font-semibold">2450 pts</div>
+            </li>
+
+            <li class="flex items-center justify-between p-3 bg-teal-50 rounded">
+              <div class="flex items-center gap-3">
+                <div class="px-3 py-1 bg-gray-300 rounded">2</div>
+                <div><div class="font-semibold">Blue Ecosystem Foundation</div><div class="text-xs text-gray-600">Impact: 1800 pts</div></div>
+              </div>
+              <div class="text-teal-700 font-semibold">1800 pts</div>
+            </li>
+          </ul>
+        </div>
+      </section>
+
+      <!-- PUBLIC: Audit Trails -->
+      <section id="public-audits" class="mb-8 hidden">
+        <div class="bg-white p-6 rounded shadow mb-4">
+          <h2 class="text-xl font-semibold text-teal-800">Audit Trails</h2>
+          <p class="text-gray-600">Immutable logs of minting, transfers and approvals — public view</p>
+        </div>
+
+        <div class="bg-white p-6 rounded shadow">
+          <ol class="relative border-l border-teal-600 ml-3 space-y-4">
+            <li class="ml-6">
+              <span class="absolute -left-3 flex items-center justify-center w-6 h-6 bg-teal-600 rounded-full text-white"><i class="fas fa-leaf text-xs"></i></span>
+              <h3 class="font-semibold text-teal-800">245 Credits Minted</h3>
+              <p class="text-sm text-gray-600">Mangrove Conservation Initiative • Oct 12, 2023 • TXN-001</p>
+            </li>
+            <li class="ml-6">
+              <span class="absolute -left-3 flex items-center justify-center w-6 h-6 bg-amber-500 rounded-full text-white"><i class="fas fa-search text-xs"></i></span>
+              <h3 class="font-semibold text-teal-800">Audit Verification</h3>
+              <p class="text-sm text-gray-600">Seagrass Project audited • Oct 10, 2023 • AUD-078</p>
+            </li>
+          </ol>
+        </div>
+      </section>
+
+      <!-- PUBLIC: Certificates -->
+      <section id="public-certificates" class="mb-8 hidden">
+        <div class="bg-white p-6 rounded shadow mb-4">
+          <h2 class="text-xl font-semibold text-teal-800">Verification Certificates</h2>
+          <p class="text-gray-600">Issued certificates (public download)</p>
+        </div>
+
+        <div class="bg-white p-6 rounded shadow">
+          <ul class="space-y-3 text-xs">
+            <li class="p-3 bg-teal-50 rounded flex justify-between items-center">
+              <div>Certificate #MC-245</div>
+              <a class="text-teal-600 underline" href="#">Download</a>
+            </li>
+            <li class="p-3 bg-teal-50 rounded flex justify-between items-center">
+              <div>Certificate #SG-180</div>
+              <a class="text-teal-600 underline" href="#">Download</a>
+            </li>
+          </ul>
+        </div>
+      </section>
+
+      <!-- PUBLIC: Climate Resilience Analytics -->
+      <section id="public-resilience" class="mb-8 hidden">
+        <div class="bg-white p-6 rounded shadow mb-4">
+          <h2 class="text-xl font-semibold text-teal-800">Climate Resilience Analytics</h2>
+          <p class="text-gray-600">Co-benefits such as flood control, biodiversity and livelihoods</p>
+        </div>
+
+        <div class="bg-white p-6 rounded shadow">
+          <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <div>
+              <h4 class="font-semibold text-teal-800 mb-2">Flood Control Value (estimated)</h4>
+              <canvas id="floodChart" height="160"></canvas>
+            </div>
+            <div>
+              <h4 class="font-semibold text-teal-800 mb-2">Biodiversity Index</h4>
+              <canvas id="biodiversityChart" height="160"></canvas>
+            </div>
+          </div>
+        </div>
+
+
+<!-- PROFILE PAGE -->
+
+<section id="profile" class="hidden mb-8">
+<div class="bg-white p-6 rounded shadow mb-4">
+<h2 class="text-2xl font-semibold text-teal-800">User Profile</h2>
+<p class="text-gray-600">Account details and settings</p>
+</div>
+
+<div class="bg-white p-6 rounded shadow">
+
+<div class="flex items-center gap-4 mb-6">
+
+<div class="w-16 h-16 rounded-full bg-teal-600 flex items-center justify-center text-white text-xl">
+<i class="fas fa-user"></i>
+</div>
+
+<div>
+<div class="text-lg font-semibold">John Doe</div>
+<div class="text-sm text-gray-500">john@example.com</div>
+</div>
+
+</div>
+
+<div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+
+<div class="p-3 bg-teal-50 rounded">
+<div class="text-gray-500">Role</div>
+<div class="font-semibold">Corporate Buyer</div>
+</div>
+
+<div class="p-3 bg-teal-50 rounded">
+<div class="text-gray-500">Member Since</div>
+<div class="font-semibold">2023</div>
+</div>
+
+<div class="p-3 bg-teal-50 rounded">
+<div class="text-gray-500">Credits Purchased</div>
+<div class="font-semibold">1245</div>
+</div>
+
+<div class="p-3 bg-teal-50 rounded">
+<div class="text-gray-500">GRS Score</div>
+<div class="font-semibold">81</div>
+</div>
+
+</div>
+
+<div class="mt-6">
+
+<button id="logout-btn" class="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700">
+Logout
+</button>
+
+</div>
+
+</div>
+
+</section>
+
+
+<footer class="mt-12 text-xs text-gray-500">
+      </section>
+
+      <!-- ==================================================================
+           Footer / End of main content
+           ================================================================== -->
+      <footer class="mt-12 text-xs text-gray-500">
+        <div class="text-center">Prototype • CarbonVault • Demo only — not for production</div>
+      </footer>
+
+    </main>
+  </div>
+
+  <!-- ===========================
+       SCRIPTS: Role switching, nav sync, charts, simple mocks
+       =========================== -->
+  <script>
+    /**********************
+     Role / Sidebar Setup
+     - 4 roles: admin (0), ngo (1), buyer (2), public (3)
+     - Sidebar nav sections: admin-nav, ngo-nav, buyer-nav, public-nav
+     - Main content sections have ids used in anchors (#admin-dashboard, etc.)
+     **********************/
+    const roles = ['Platform Admin','NGO / Project Owner','Corporate Buyer','Public Viewer / Regulator'];
+    let currentRole = 0; // start admin
+    const switchRoleBtn = document.getElementById('switch-role-btn');
+    const userRoleLabel = document.getElementById('user-role');
+    const userRoleSub = document.getElementById('user-role-sub');
+    const navRoleText = document.getElementById('nav-role-text');
+    const navRoleLabel = document.getElementById('nav-role-label');
+
+    function setRole(roleIndex) {
+      currentRole = roleIndex;
+      const roleName = roles[roleIndex];
+      userRoleLabel.innerText = roleName;
+      navRoleText.innerText = roleName;
+    
+      // set subtitle
+      if (roleIndex === 0) userRoleSub.innerText = 'Administrator';
+      else if (roleIndex === 1) userRoleSub.innerText = 'NGO / Project Owner';
+      else if (roleIndex === 2) userRoleSub.innerText = 'Corporate Buyer';
+      else userRoleSub.innerText = 'Public / Regulator';
+    
+      // show/hide sidebars
+      document.getElementById('admin-nav').classList.toggle('hidden', roleIndex !== 0);
+      document.getElementById('ngo-nav').classList.toggle('hidden', roleIndex !== 1);
+      document.getElementById('buyer-nav').classList.toggle('hidden', roleIndex !== 2);
+      document.getElementById('public-nav').classList.toggle('hidden', roleIndex !== 3);
+    
+      // 🚀 force role’s dashboard by updating hash
+      if (roleIndex === 0) window.location.hash = '#admin-dashboard';
+      else if (roleIndex === 1) window.location.hash = '#ngo-dashboard';
+      else if (roleIndex === 2) window.location.hash = '#buyer-dashboard';
+      else window.location.hash = '#public-dashboard';
+    
+    }  
+
+    switchRoleBtn.addEventListener('click', () => {
+      setRole((currentRole + 1) % roles.length);
+      // small role-switch animation on nav label
+      navRoleLabel.classList.add('animate-pulse');
+      setTimeout(()=>navRoleLabel.classList.remove('animate-pulse'), 800);
+    });
+
+    // mobile toggle for sidebar (simple)
+    document.getElementById('mobile-toggle').addEventListener('click', () => {
+      const sb = document.getElementById('sidebar');
+      if (sb.style.transform === 'translateX(-280px)') {
+        sb.style.transform = 'translateX(0)';
+      } else {
+        sb.style.transform = 'translateX(-280px)';
+      }
+    });
+
+    // initialize role but don't override login
+if(!window.location.hash){
+  setRole(0)
+}
+
+    /**********************
+     Anchor navigation & section management
+     - When a #hash anchor changes, show that section and hide others
+     - If anchor is not present, show default based on role
+     **********************/
+    function showSectionFromHash() {
+      // hide all main sections (every direct child <section> or elements with ids)
+      // We will hide any element under main that has an id that matches our known sections
+      const main = document.querySelector('main');
+      const allSections = main.querySelectorAll('[id]');
+      allSections.forEach(el => {
+        // keep footer and other non-section elements hidden? we'll hide major ones only by class or tag
+        // We'll hide if element is a section or an element with class 'hidden-section' or with big role sections
+        if (el.tagName.toLowerCase() === 'section') {
+        el.classList.add('hidden');
+}
+      });
+
+      // Determine target hash
+      let hash = window.location.hash;
+      if (!hash || hash === '#') {
+        // default dashboard per role
+        if (currentRole === 0) hash = '#admin-dashboard';
+        else if (currentRole === 1) hash = '#ngo-dashboard';
+        else if (currentRole === 2) hash = '#buyer-dashboard';
+        else hash = '#public-dashboard';
+      }
+
+      // If hash references a valid element, show it
+      try {
+        let target = document.querySelector(hash);
+        if (target) {
+          target.classList.remove('hidden');
+          // scroll to top of main content
+          document.getElementById('main').scrollTo({ top: 0, behavior: 'smooth' });
+        } else {
+          // if anchor not found, still show role default
+          const defaultId = (currentRole === 0) ? '#admin-dashboard' : (currentRole === 1) ? '#ngo-dashboard' : (currentRole === 2) ? '#buyer-dashboard' : '#public-dashboard';
+          const defEl = document.querySelector(defaultId);
+          if (defEl) defEl.classList.remove('hidden');
+        }
+      } catch (e) {
+        console.warn('Invalid hash', e);
+      }
+
+      // update active link styles in sidebar
+      document.querySelectorAll('#sidebar a.sidebar-link').forEach(a => a.classList.remove('active'));
+      const activeLink = document.querySelector('#sidebar a.sidebar-link[href="'+hash+'"]');
+      if (activeLink) activeLink.classList.add('active');
+    }
+
+    window.addEventListener('load', showSectionFromHash);
+    window.addEventListener('hashchange', showSectionFromHash);
+
+    /**********************
+     Charts initialization (mock data)
+     - pricingChart
+     - creditsByType, mrvAccuracy, resilienceRadar, shadowCreditsChart
+     - ngoSurvivalChart, ngoCobeneftChart
+     - floodChart, biodiversityChart
+     **********************/
+    // small helper to create charts only if canvas exists
+    function createChartIf(id, config) {
+      const el = document.getElementById(id);
+      if (!el) return null;
+      return new Chart(el.getContext('2d'), config);
+    }
+
+    // Pricing chart (admin)
+    const pricingChart = createChartIf('pricingChart', {
+      type: 'line',
+      data: {
+        labels: ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep'],
+        datasets: [
+          { label: 'Price ($/t)', data: [10,11,11.5,12,12.2,12,12.5,13,12.8], borderColor: '#0d9488', backgroundColor: 'rgba(13,148,136,0.05)', fill: true }
+        ]
+      },
+      options: { responsive:true, plugins:{legend:{display:false}} }
+    });
+
+    // credits by type
+    createChartIf('creditsByType', {
+      type: 'doughnut',
+      data: { labels:['Mangrove','Seagrass','Living Carbon','Others'], datasets:[{ data:[45,25,20,10], backgroundColor:['#14b8a6','#3b82f6','#f59e0b','#9ca3af']}] },
+      options:{ responsive:true, plugins:{legend:{position:'bottom'}}}
+    });
+
+    // MRV accuracy
+    createChartIf('mrvAccuracy', {
+      type: 'bar',
+      data: { labels:['AI','Manual','Field'], datasets:[{ label:'Accuracy %', data:[88,92,85], backgroundColor:'#0d9488' }] },
+      options:{ responsive:true, plugins:{legend:{display:false}}, scales:{y:{beginAtZero:true, max:100}}}
+    });
+
+    // resilience radar
+    createChartIf('resilienceRadar', {
+      type: 'radar',
+      data: { labels:['Flood Control','Biodiversity','Fisheries','Coastal Protection','Carbon Sequestration'], datasets:[{ label:'Resilience Index', data:[80,75,70,85,90], borderColor:'#0d9488', backgroundColor:'rgba(13,148,136,0.12)' }]},
+      options:{ responsive:true, scales:{r:{beginAtZero:true, max:100}}}
+    });
+
+    // Shadow credits
+    createChartIf('shadowCreditsChart', {
+      type: 'bar',
+      data: { labels:['Year0','Year1','Year2','Year3','Year4','Year5'], datasets:[{ label:'Projected (t)', data:[0,45,90,120,140,145], backgroundColor:'#3b82f6'}] },
+      options:{ responsive:true, plugins:{legend:{display:false}}, scales:{y:{beginAtZero:true}}}
+    });
+
+    // NGO charts
+    createChartIf('ngoSurvivalChart', {
+      type: 'line',
+      data: { labels:['2020','2021','2022','2023','2024'], datasets:[{ label:'Survival Rate %', data:[60,75,82,88,92], borderColor:'#0d9488', fill:false }]},
+      options:{ responsive:true, plugins:{legend:{display:false}}, scales:{y:{min:0, max:100}}}
+    });
+
+    createChartIf('ngoCobeneftChart', {
+      type: 'bar',
+      data: { labels:['Biodiversity','Livelihoods','Fisheries'], datasets:[{ label:'Index', data:[72,65,80], backgroundColor:['#14b8a6','#f59e0b','#3b82f6']}]},
+      options:{ responsive:true, plugins:{legend:{display:false}}}
+    });
+
+    // public resilience charts
+    createChartIf('floodChart', {
+      type: 'line',
+      data: { labels:['2018','2019','2020','2021','2022','2023'], datasets:[{ label:'Flood frequency reduction (%)', data:[1,5,8,12,15,18], borderColor:'#2563eb', fill:false }]},
+      options:{ responsive:true, plugins:{legend:{display:false}}}
+    });
+
+    createChartIf('biodiversityChart', {
+      type: 'bar',
+      data: { labels:['Mangrove','Seagrass','Coral'], datasets:[{ label:'Biodiversity score', data:[80,70,60], backgroundColor:['#14b8a6','#3b82f6','#f59e0b']}]},
+      options:{ responsive:true, plugins:{legend:{display:false}}, scales:{y:{beginAtZero:true}}}
+    });
+
+    /**********************
+     Pricing engine interactions (simple mock)
+     **********************/
+    document.getElementById('apply-pricing')?.addEventListener('click', () => {
+      const base = parseFloat(document.getElementById('base-price').value || 12);
+      const quality = parseFloat(document.getElementById('quality-mul').value || 1);
+      const grs = parseFloat(document.getElementById('grs-mul').value || 1);
+      const effective = (base * quality * grs).toFixed(2);
+      alert('Effective base price after multipliers: $' + effective + '/t (mock)');
+      // update pricing chart last point
+      if (pricingChart) {
+        pricingChart.data.datasets[0].data[pricingChart.data.datasets[0].data.length-1] = parseFloat(effective);
+        pricingChart.update();
+      }
+    });
+
+    /**********************
+     Evidence submission mock
+     **********************/
+    document.getElementById('submit-evidence')?.addEventListener('click', () => {
+      alert("Evidence uploaded successfully. Waiting for Admin MRV verification.");
+      // optionally update UI / simulate MRV - not necessary here
+    });
+
+    /**********************
+     Make anchor links in sidebar close mobile sidebar (optional)
+     **********************/
+    document.querySelectorAll('#sidebar a.sidebar-link').forEach(a => {
+      a.addEventListener('click', (e) => {
+        // update hash (browser will trigger hashchange)
+        // close mobile sidebar if open
+        const sb = document.getElementById('sidebar');
+        if (window.innerWidth < 768) {
+          sb.style.transform = 'translateX(-280px)';
+        }
+      });
+    });
+
+    /**********************
+     Small UX: Ensure main area scroll when switching sections
+     **********************/
+    // show default on load
+    showSectionFromHash();
+
+    /**********************
+     Accessibility & keyboard: allow numeric role switching (1-4)
+     **********************/
+    window.addEventListener('keydown', (e) => {
+      if (e.key >= '1' && e.key <= '4') {
+        setRole(parseInt(e.key) - 1);
+      }
+    });
+
+    /* =========================
+PROJECT APPROVAL SYSTEM
+========================= */
+
+document.querySelectorAll('#admin-dashboard .bg-green-600').forEach(btn => {
+
+  btn.addEventListener('click', function(){
+
+    const card = this.closest('.project-card')
+
+    card.style.background = '#dcfce7'
+
+    this.innerText = "Approved"
+
+    this.disabled = true
+
+  })
+
+})
+
+/* =========================
+CREDIT MINTING
+========================= */
+
+document.querySelectorAll('#admin-minting button').forEach(btn => {
+
+  btn.addEventListener('click', function(){
+
+    const project = this.parentElement.parentElement.querySelector('.font-semibold').innerText
+
+    alert(project + " credits minted successfully")
+
+  })
+
+})
+
+/* =========================
+MARKETPLACE BUY
+========================= */
+
+document.querySelectorAll('.marketplace-card-back button').forEach(btn => {
+
+  btn.addEventListener('click', function(){
+
+    alert("Credits purchased successfully!")
+
+  })
+
+})
+
+/* =========================
+SIMPLE LOGIN SYSTEM (WORKING)
+========================= */
+
+function loginUser(){
+
+const email = document.getElementById("login-email").value.trim()
+const password = document.getElementById("login-password").value.trim()
+
+if(password !== "1234"){
+alert("Incorrect password")
+return
+}
+
+/* hide login screen */
+
+document.getElementById("login-screen").style.display = "none"
+
+/* redirect based on email */
+
+if(email === "admin@carbonvault.com"){
+
+setRole(0)
+window.location.hash = "#admin-dashboard"
+
+document.querySelector("#profile .text-lg").innerText = "Admin User"
+document.querySelector("#profile .text-sm").innerText = "admin@carbonvault.com"
+
+}
+
+else if(email === "ngo@carbonvault.com"){
+
+setRole(1)
+window.location.hash = "#ngo-dashboard"
+
+document.querySelector("#profile .text-lg").innerText = "NGO Manager"
+document.querySelector("#profile .text-sm").innerText = "ngo@carbonvault.com"
+
+}
+
+else if(email === "buyer@carbonvault.com"){
+
+setRole(2)
+window.location.hash = "#buyer-dashboard"
+
+document.querySelector("#profile .text-lg").innerText = "Corporate Buyer"
+document.querySelector("#profile .text-sm").innerText = "buyer@carbonvault.com"
+
+}
+
+else{
+
+setRole(3)
+window.location.hash = "#public-dashboard"
+
+}
+
+/* show section */
+
+showSectionFromHash()
+
+}
+
+
+document.getElementById("login-password").addEventListener("keydown",function(e){
+
+if(e.key === "Enter"){
+loginUser()
+}
+
+})
+
+/* =========================
+BACKGROUND PARTICLES
+========================= */
+
+const canvas = document.getElementById("particles")
+
+if(canvas){
+
+const ctx = canvas.getContext("2d")
+
+canvas.width = window.innerWidth
+canvas.height = window.innerHeight
+
+let particles = []
+
+for(let i=0;i<80;i++){
+
+particles.push({
+x:Math.random()*canvas.width,
+y:Math.random()*canvas.height,
+r:Math.random()*3,
+dx:(Math.random()-0.5)*0.5,
+dy:(Math.random()-0.5)*0.5
+})
+
+}
+
+function draw(){
+
+ctx.clearRect(0,0,canvas.width,canvas.height)
+
+particles.forEach(p=>{
+
+ctx.beginPath()
+ctx.arc(p.x,p.y,p.r,0,Math.PI*2)
+ctx.fillStyle="rgba(255,255,255,0.7)"
+ctx.fill()
+
+p.x+=p.dx
+p.y+=p.dy
+
+})
+
+requestAnimationFrame(draw)
+
+}
+
+draw()
+
+}
+
+  /* =========================
+LEAFLET PROJECT MAP
+========================= */
+
+const mapContainer = document.getElementById("project-map")
+
+if(mapContainer){
+
+  const map = L.map('project-map').setView([21.1458, 79.0882], 5)
+
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
+    attribution:'© OpenStreetMap'
+  }).addTo(map)
+
+  /* sample plots */
+
+  const plot1 = L.marker([19.0760,72.8777]).addTo(map)
+  plot1.bindPopup("Mangrove Plot 12A")
+
+  const plot2 = L.marker([13.0827,80.2707]).addTo(map)
+  plot2.bindPopup("Seagrass Plot 07B")
+
+}
+
+/* =========================
+PROFILE PAGE
+========================= */
+
+document.getElementById("profile-btn").addEventListener("click",function(){
+
+window.location.hash = "#profile"
+showSectionFromHash()
+
+})
+
+
+/* =========================
+LOGOUT SYSTEM
+========================= */
+
+document.getElementById("logout-btn")?.addEventListener("click",function(){
+
+document.getElementById("login-screen").style.display = "flex"
+
+window.location.hash = ""
+
+document.getElementById("login-email").value = ""
+document.getElementById("login-password").value = ""
+
+})
+
+    /**********************
+     End of script
+     **********************/
+  </script>
+</body>
+</html>
